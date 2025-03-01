@@ -6,7 +6,6 @@ import java.util.*;
 // different grids.
 
 // Further changes below:
-// - Turns are now no longer locked to alternation. If a ship is struck, the player may go again.
 // - Added different ship sizes. Specifically 5, 4, 3, 2.
 // - While adding your ships to the table, you now see live updates of your map.
 
