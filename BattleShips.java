@@ -243,23 +243,21 @@ public class BattleShips {
                     computerGrid[x][y].equals("3") || computerGrid[x][y].equals("2")) {
                 System.out.println("Boom! You hit a ship at (" + x + ", " + y + ")!");
                 computerGrid[x][y] = "X"; // Mark the hit.
-                // (Optionally, add code here to check if the ship is completely sunk.)
+                
                 // Continue the turn since the player hit.
             } else if (computerGrid[x][y].equals(" ")) {
                 System.out.println("You missed.");
                 computerGrid[x][y] = "-";
                 continueTurn = false; // End turn on a miss.
             } else {
-                // The player already shot here.
                 System.out.println("You already shot here. Try a different coordinate.");
-                // We don't end the turn; allow them to try again.
             }
 
             printComputerBoard();
         }
     }
 
-    // Computer's turn: the computer fires a shot at the player's board using a simple AI.
+    // Computer's turn
     public static void computerTurn() {
         System.out.println("\nCOMPUTER'S TURN");
         int x, y;
@@ -290,7 +288,6 @@ public class BattleShips {
             System.out.println("Computer hit your ship at (" + x + ", " + y + ")!");
             playerGrid[x][y] = "X";
             addCandidates(x, y);
-            // (Optionally, check if that ship is sunk.)
         } else if (playerGrid[x][y].equals(" ")) {
             System.out.println("Computer missed at (" + x + ", " + y + ").");
             playerGrid[x][y] = "-";
@@ -301,7 +298,6 @@ public class BattleShips {
         printPlayerBoard();
     }
 
-    // Helper: Get a random coordinate on a given board that hasn't been guessed.
     public static int[] getRandomCoordinate(String[][] board) {
         int x, y;
         Random random = new Random();
@@ -312,7 +308,7 @@ public class BattleShips {
         return new int[]{x, y};
     }
 
-    // Helper: Check if a cell on a given board has already been guessed.
+    // Check if a cell on a given board has already been guessed.
     public static boolean isAlreadyGuessed(String[][] board, int x, int y) {
         return board[x][y].equals("X") || board[x][y].equals("-");
     }
@@ -332,7 +328,7 @@ public class BattleShips {
     // game over display.
     public static void gameOver() {
         System.out.println("\nGame Over");
-        // You would normally check if all ships on one board are sunk.
+        // check if all ships on one board are sunk.
         if(playerShips > 0 && computerShips <= 0)
             System.out.println("Hooray! You won the battle :)");
         else if(computerShips > 0 && playerShips <= 0)
