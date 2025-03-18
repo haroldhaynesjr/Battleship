@@ -1,15 +1,5 @@
 import java.util.*;
 
-// Harold:
-// What's up guys. The code has been completely revamped due to the game not being complete.
-// The main problem the code faced was playing the whole game on one board. Now the boards are split using two
-// different grids.
-
-// Further changes below:
-// - Turns are now no longer locked to alternation. If a ship is struck, the player may go again.
-// - Added different ship sizes. Specifically 5, 4, 3, 2.
-// - While adding your ships to the table, you now see live updates of your map.
-
 public class BattleShips {
     public static int numRows = 10;
     public static int numCols = 10;
@@ -17,39 +7,31 @@ public class BattleShips {
     public static int computerShips;
     // We have to save because the memory state of the computer needs to remember where exactly it was and what it was doing
     // so if it loses a turn - it can come back and rememebr this is the original bomb that I dropped.
+    // (The following commented pseudocode was implemented via the ComputerMemory inner class and our targeting logic.)
     //public int[][] computerLastHit =[0][0];
     //public int[] hit1 = [0,0];
     //public bool computerIsLater = false; This is for when the comptuer is trying to remember whether it is going left right (true) or top down (false)
-    //public hitcounter = 0; 
+    //public hitcounter = 0;
     // public bool keepRight = false; for when the go left stategy doesn't work - go all the way right
     // public bool keepTop = false; for when the go bottom strat blah blah
     // public bool hit = false;
 
-
-
-//Implementation of pseudo below
-   public class ComputerMemory {
+    // Implementation of pseudo below
+    public class ComputerMemory {
         private int[][] computerLastHit = new int[1][2]; // Stores the last hit position
         private int[] hit1 = new int[2]; // First hit position in a sequence
-        private boolean computerIsLateral = false; // Determines if the computer searches left-right or top-down
+        private boolean computerIsLateral = false; // Determines if the computer searches left-right (true) or top-down (false)
         private int hitCounter = 0; // Tracks consecutive hits
-        private boolean keepRight = false; // Determines if the computer should keep searching right
-        private boolean keepTop = false; // Determines if the computer should keep searching upward
-        private boolean hit = false; // Tracks whether a hit was made
+        private boolean keepRight = false; // Determines if the computer should switch direction horizontally (or vertically if inverted)
+        private boolean keepTop = false; // (Not used in this implementation)
+        private boolean hit = false; // Tracks whether a hit was made in the current sequence
+
         // Constructor
         public ComputerMemory() {
-            computerLastHit[0][0] = -1; // Default invalid coordinate
+            computerLastHit[0][0] = -1;
             computerLastHit[0][1] = -1;
             hit1[0] = -1;
             hit1[1] = -1;
-        }
-        // Getter and Setter Methods
-        public int[][] getComputerLastHit() {
-            return computerLastHit;
-        }
-        public void setComputerLastHit(int x, int y) {
-            computerLastHit[0][0] = x;
-            computerLastHit[0][1] = y;
         }
         public int[] getHit1() {
             return hit1;
@@ -58,47 +40,45 @@ public class BattleShips {
             hit1[0] = x;
             hit1[1] = y;
         }
-        public boolean isComputerLateral() {
-            return computerIsLateral;
-        }
-        public void setComputerLateral(boolean lateral) {
-            this.computerIsLateral = lateral;
-        }
         public int getHitCounter() {
             return hitCounter;
         }
         public void incrementHitCounter() {
-            this.hitCounter++;
+            hitCounter++;
         }
         public void resetHitCounter() {
-            this.hitCounter = 0;
+            hitCounter = 0;
+        }
+        public boolean isComputerLateral() {
+            return computerIsLateral;
+        }
+        public void setComputerLateral(boolean lateral) {
+            computerIsLateral = lateral;
         }
         public boolean isKeepRight() {
             return keepRight;
         }
-        public void setKeepRight(boolean keepRight) {
-            this.keepRight = keepRight;
+        public void setKeepRight(boolean kr) {
+            keepRight = kr;
         }
-        public boolean isKeepTop() {
-            return keepTop;
+        public void resetMemory() {
+            hit1[0] = -1;
+            hit1[1] = -1;
+            resetHitCounter();
+            computerIsLateral = false;
+            keepRight = false;
         }
-        public void setKeepTop(boolean keepTop) {
-            this.keepTop = keepTop;
-        }
-        public boolean isHit() {
-            return hit;
-        }
-        public void setHit(boolean hit) {
-            this.hit = hit;
-        }
-    }    
-// END 
+    }
+
     // Added feature where each player has their own board. The original code only used one board.
     public static String[][] playerGrid = new String[numRows][numCols];
     public static String[][] computerGrid = new String[numRows][numCols];
 
     // This will be the list of options the AI considers stored in an ArrayList.
     public static ArrayList<int[]> targetList = new ArrayList<>();
+
+    // Create a static instance of ComputerMemory to hold the CPU’s targeting state.
+    public static ComputerMemory cpuMemory = new BattleShips().new ComputerMemory();
 
     public static void main(String[] args) {
         System.out.println("**** WELCOME TO BATTLESHIP VI! ****");
@@ -122,9 +102,10 @@ public class BattleShips {
         System.out.println("  0123456789");
         for (int i = 0; i < numRows; i++) {
             System.out.println(i + "|          |" + i + "\n");
+        }
+        System.out.println("  0123456789\n");
     }
-    System.out.println("  0123456789\n");
-}
+
     // Initialize both boards with blank spaces.
     public static void initBoards() {
         for (int i = 0; i < numRows; i++){
@@ -165,7 +146,7 @@ public class BattleShips {
         for (int i = 0; i < numRows; i++){
             System.out.print(i + "|");
             for (int j = 0; j < numCols; j++){
-                // Hide unhit ship positions: if the cell has "5", "4", "3", or "2" (ship marker), print a blank.
+                // Hide unhit ship positions: if the cell has "5", "4", "3", or "2", print a blank.
                 if (computerGrid[i][j].equals("5") || computerGrid[i][j].equals("4") ||
                         computerGrid[i][j].equals("3") || computerGrid[i][j].equals("2")) {
                     System.out.print(" ");
@@ -190,7 +171,6 @@ public class BattleShips {
         System.out.println("\nDeploy your ships!");
 
         for (int i = 0; i < shipSizes.length; i++){
-
             int shipLength = shipSizes[i];
             boolean valid = false;
 
@@ -199,14 +179,10 @@ public class BattleShips {
                 int x = input.nextInt();
                 System.out.print("This ship is " + shipLength + " tiles long. Enter its X coordinate: ");
                 int y = input.nextInt();
-
-                //So whichever coordinate you enter, that's where the ship begins.
-                //e.g. entering (3,3,V) for a 3-tile ship covers (3,3), (4,3), (5,3).
                 System.out.print("Enter orientation (H for horizontal, V for vertical): ");
                 char orientation = input.next().charAt(0);
                 valid = true;
 
-                // Validate placement on player's board.
                 if (orientation == 'H' || orientation == 'h'){
                     if (y + shipLength > numCols) valid = false;
                     else {
@@ -233,7 +209,6 @@ public class BattleShips {
                 if (!valid)
                     System.out.println("Invalid placement. Try again.");
                 else {
-                    // Place the ship (each cell is marked with the ship's length as a string).
                     if (orientation == 'H' || orientation == 'h'){
                         for (int j = 0; j < shipLength; j++){
                             playerGrid[x][y+j] = Integer.toString(shipLength);
@@ -297,7 +272,6 @@ public class BattleShips {
                     System.out.println("Computer deployed a ship of length " + shipLength);
                 }
             }
-            //THIS AREA IS RESERVED FOR IF WE WANT TO LOOK AT THE COMPUTER'S BOARD FOR DEBUGGING PURPOSES.
         }
     }
 
@@ -309,7 +283,6 @@ public class BattleShips {
             System.out.println("\nYOUR TURN");
             int x = -1, y = -1;
             boolean validInput = false;
-            // Get a valid coordinate from the player.
             while (!validInput) {
                 System.out.print("Enter X coordinate for your shot: ");
                 x = input.nextInt();
@@ -321,138 +294,175 @@ public class BattleShips {
                     validInput = true;
                 }
             }
-
-            // Process the shot on the computer's board.
-            // Check if the cell contains a ship marker ("5", "4", "3", or "2").
             if (computerGrid[x][y].equals("5") || computerGrid[x][y].equals("4") ||
                     computerGrid[x][y].equals("3") || computerGrid[x][y].equals("2")) {
-                //playerTurn();
-                
+                String marker = computerGrid[x][y];
                 System.out.println("Boom! You hit a ship at (" + x + ", " + y + ")!");
-                computerGrid[x][y] = "X"; // Mark the hit.
-
-                // Continue the turn since the player hit.
+                computerGrid[x][y] = "X";
+                // If the ship is sunk, we decrement the computer's ship count.
+                if (isShipSunk(marker, computerGrid)) {
+                    System.out.println("You sunk the computer's ship of length " + marker + "!");
+                    computerShips--;
+                }
             } else if (computerGrid[x][y].equals(" ")) {
                 System.out.println("You missed.");
                 computerGrid[x][y] = "O";
-                continueTurn = false; // End turn on a miss.
+                continueTurn = false;
             } else {
                 System.out.println("You already shot here. Try a different coordinate.");
             }
-
             printComputerBoard();
         }
     }
 
-    // Computer's turn
+    // Computer's turn; CPU fires shots (and loops its turn if it hits or chooses an already-guessed cell).
     public static void computerTurn() {
-        // while(hit)
-        //{
-        //everything
-        //}
-        // change to do while please
-        //Might be a good idea to change this to a do while loop
         System.out.println("\nCOMPUTER'S TURN");
-        int x, y;
-        // Use candidate moves from previous hits if available.
-        //if hit is false
-        if (!targetList.isEmpty()){
-            int[] candidate = targetList.remove(0);
-            x = candidate[0];
-            y = candidate[1];
-            while(isAlreadyGuessed(playerGrid, x, y) && !targetList.isEmpty())
-            {
-                candidate = targetList.remove(0);
-                x = candidate[0];
-                y = candidate[1];
+        boolean continueTurn;
+        do {
+            int x = -1, y = -1;
+            boolean shotChosen = false;
+
+            // Use targeting memory if a hit sequence is in progress.
+            if (cpuMemory.getHit1()[0] != -1) {
+                if (cpuMemory.getHitCounter() == 1) {
+                    // Try left of the first hit
+                    int candidateY = cpuMemory.getHit1()[1] - 1;
+                    if (candidateY >= 0 && !isAlreadyGuessed(playerGrid, cpuMemory.getHit1()[0], candidateY)) {
+                        x = cpuMemory.getHit1()[0];
+                        y = candidateY;
+                        shotChosen = true;
+                    } else {
+                        // If left fails, try right.
+                        candidateY = cpuMemory.getHit1()[1] + 1;
+                        if (candidateY < numCols && !isAlreadyGuessed(playerGrid, cpuMemory.getHit1()[0], candidateY)) {
+                            x = cpuMemory.getHit1()[0];
+                            y = candidateY;
+                            shotChosen = true;
+                        }
+                    }
+                } else if (cpuMemory.getHitCounter() > 1) {
+                    if (cpuMemory.isComputerLateral()) { // horizontal search
+                        if (!cpuMemory.isKeepRight()) {
+                            int candidateY = cpuMemory.getHit1()[1] - cpuMemory.getHitCounter();
+                            if (candidateY >= 0 && !isAlreadyGuessed(playerGrid, cpuMemory.getHit1()[0], candidateY)) {
+                                x = cpuMemory.getHit1()[0];
+                                y = candidateY;
+                                shotChosen = true;
+                            } else {
+                                cpuMemory.setKeepRight(true);
+                            }
+                        }
+                        if (!shotChosen && cpuMemory.isKeepRight()) {
+                            int candidateY = cpuMemory.getHit1()[1] + cpuMemory.getHitCounter();
+                            if (candidateY < numCols && !isAlreadyGuessed(playerGrid, cpuMemory.getHit1()[0], candidateY)) {
+                                x = cpuMemory.getHit1()[0];
+                                y = candidateY;
+                                shotChosen = true;
+                            } else {
+                                cpuMemory.resetMemory();
+                            }
+                        }
+                    } else { // vertical search
+                        if (!cpuMemory.isKeepRight()) { // using keepRight for vertical switch as well
+                            int candidateX = cpuMemory.getHit1()[0] - cpuMemory.getHitCounter();
+                            if (candidateX >= 0 && !isAlreadyGuessed(playerGrid, candidateX, cpuMemory.getHit1()[1])) {
+                                x = candidateX;
+                                y = cpuMemory.getHit1()[1];
+                                shotChosen = true;
+                            } else {
+                                cpuMemory.setKeepRight(true);
+                            }
+                        }
+                        if (!shotChosen && cpuMemory.isKeepRight()) {
+                            int candidateX = cpuMemory.getHit1()[0] + cpuMemory.getHitCounter();
+                            if (candidateX < numRows && !isAlreadyGuessed(playerGrid, candidateX, cpuMemory.getHit1()[1])) {
+                                x = candidateX;
+                                y = cpuMemory.getHit1()[1];
+                                shotChosen = true;
+                            } else {
+                                cpuMemory.resetMemory();
+                            }
+                        }
+                    }
+                }
+
+                if (!shotChosen) {
+                    if (!targetList.isEmpty()){
+                        int[] candidate = targetList.remove(0);
+                        x = candidate[0];
+                        y = candidate[1];
+                        shotChosen = true;
+                    } else {
+                        int[] randomCoord = getRandomCoordinate(playerGrid);
+                        x = randomCoord[0];
+                        y = randomCoord[1];
+                        shotChosen = true;
+                    }
+                }
+            } else { // No targeting memory, choose from candidate list or random.
+                if (!targetList.isEmpty()){
+                    int[] candidate = targetList.remove(0);
+                    x = candidate[0];
+                    y = candidate[1];
+                    while(isAlreadyGuessed(playerGrid, x, y) && !targetList.isEmpty()){
+                        candidate = targetList.remove(0);
+                        x = candidate[0];
+                        y = candidate[1];
+                    }
+                    if(isAlreadyGuessed(playerGrid, x, y)){
+                        int[] randomCoord = getRandomCoordinate(playerGrid);
+                        x = randomCoord[0];
+                        y = randomCoord[1];
+                    }
+                } else {
+                    int[] randomCoord = getRandomCoordinate(playerGrid);
+                    x = randomCoord[0];
+                    y = randomCoord[1];
+                }
             }
-            if(isAlreadyGuessed(playerGrid, x, y))
-            {
-                // I dont know what to do here
-                // run a million tests based on random coords hitting or not hitting
-                // choose the one that fared best
-                //
-                int[] randomCoord = getRandomCoordinate(playerGrid);
-                x = randomCoord[0];
-                y = randomCoord[1];
+
+            // Process the shot on player's board.
+            if (playerGrid[x][y].equals("5") || playerGrid[x][y].equals("4") ||
+                    playerGrid[x][y].equals("3") || playerGrid[x][y].equals("2")) {
+                String marker = playerGrid[x][y];
+                System.out.println("Computer hit your ship at (" + x + ", " + y + ")!");
+                playerGrid[x][y] = "X";
+                // If ship is sunk, announce and reset targeting memory.
+                if (isShipSunk(marker, playerGrid)) {
+                    System.out.println("Computer sunk your ship of length " + marker + "!");
+                    playerShips--;
+                    cpuMemory.resetMemory();
+                } else {
+                    if (cpuMemory.getHit1()[0] == -1) {
+                        cpuMemory.setHit1(x, y);
+                        cpuMemory.resetHitCounter();
+                        cpuMemory.incrementHitCounter();
+                    } else {
+                        cpuMemory.incrementHitCounter();
+                        if (cpuMemory.getHitCounter() == 2) {
+                            if (x == cpuMemory.getHit1()[0]) {
+                                cpuMemory.setComputerLateral(true);
+                            } else {
+                                cpuMemory.setComputerLateral(false);
+                            }
+                        }
+                    }
+                    addCandidates(x, y);
+                }
+                continueTurn = true;
+            } else if (playerGrid[x][y].equals(" ")) {
+                System.out.println("Computer missed at (" + x + ", " + y + ").");
+                playerGrid[x][y] = "-";
+                cpuMemory.resetMemory();
+                continueTurn = false;
+            } else {
+                System.out.println("Computer already shot at (" + x + ", " + y + "). Trying again...");
+                continueTurn = true;
             }
-        } 
-        else 
-        {
-            int[] randomCoord = getRandomCoordinate(playerGrid);
-            x = randomCoord[0];
-            y = randomCoord[1];
-        }
-        //hit is false^
 
-        // if counter == 1 ;
-        // 
-        // then
-        // hit1.y
-        // going to the left means -1 for the y IE y=  hit1[0][0];
-        // hit1[0][0]-1 && hit1[0][0]-1 > 0
-        //
-        // x stays the same
-        //
-        // if (playerGrid[x][y].equals("5") || playerGrid[x][y].equals("4") || playerGrid[x][y].equals("3") || playerGrid[x][y].equals("2"))
-        // then
-        //  comptuerIsLateral = true
-        //  playerGrid[x][y] = "X";
-        // else 
-        //  computerIsLater = false
-
-        //
-        // if (counter < 5 && counter > 1 && computerIsLater && !isDead)
-        // then
-        // hit1.y (which is the left or right)
-        // y = y-1;
-        // x stays the same 
-        // if (playerGrid[x][y].equals("5") || playerGrid[x][y].equals("4") || playerGrid[x][y].equals("3") || playerGrid[x][y].equals("2"))
-        // then 
-        // playerGrid[x][y] = "X";
-        // 
-        // else (as in going left no longer works)
-        // goRight = true
-        // so here we lose a turn
-        // come back now with the following public vars changed - counter = (however many times we hit left), goRight = true, computerIsLater = true
-        // isDead == false
-        // so here we loop right
-        // while(counter<5 && goRight && !isDead)
-        // hit1.y (whatever the y is for the original hit + 1 (unless it hits a wall which then isDead == true)
-        // y = hit1.y
-        // y + 1
-        // if (playerGrid[x][y].equals("5") || playerGrid[x][y].equals("4") || playerGrid[x][y].equals("3") || playerGrid[x][y].equals("2"))
-        // (we hit something keeps going)
-        // playerGrid[x][y] = "X";
-        // else
-        // isDead = true; (this exits the loop)
-        // hit = false;
-        // counter = 0;
-        // computerIsLateral = false;
-        // go back to random hit choices/
-        // once it exits
-        // isDead
-
-        // Process shot on player's board.
-        if (playerGrid[x][y].equals("5") || playerGrid[x][y].equals("4") ||
-                playerGrid[x][y].equals("3") || playerGrid[x][y].equals("2")) {
-            //
-            // save these x,y right here because it means it hit something -
-            // hit1[][] = [x][y]; 
-            // counter++;
-            // hit true
-            System.out.println("Computer hit your ship at (" + x + ", " + y + ")!");
-            playerGrid[x][y] = "X";
-            addCandidates(x, y);
-        } else if (playerGrid[x][y].equals(" ")) {
-            System.out.println("Computer missed at (" + x + ", " + y + ").");
-            // hit = false
-            playerGrid[x][y] = "-";
-        } else {
-            System.out.println("Computer already shot at (" + x + ", " + y + ").");
-        }
-
-        printPlayerBoard();
+            printPlayerBoard();
+        } while (continueTurn && playerShips > 0);
     }
 
     public static int[] getRandomCoordinate(String[][] board) {
@@ -470,35 +480,6 @@ public class BattleShips {
         return board[x][y].equals("X") || board[x][y].equals("-");
     }
 
-    // int killedships = 0;
-    // if(isDead)
-    //{
-    //killedships++;
-    //}
-    // if(killedships == 4)
-    //{gameover}
-    //
-    // Taking the last ship hit and making a search
-    // save array of the last hit
-    //classify the ship as (isLateral) or !Lateral
-    //we build a series of x,y coordinates
-    //From that  - we can make a distinction on whether something is to the left or right
-
-    //if there is a hit next to the player grid on the left - 
-    //then [hit1.x-1,hit1.y] is the next hit UNTIL
-    // next hit [hit1.x-i,hit1.y] == a miss or -
-    //
-    //if there is a hit next to the player grid on the right - 
-    //Then 
-    //then [hit1.x+1,hit1.y] is the next hit UNTIL
-    // next hit [hit1.x+i,hit1.y] == a miss or -
-    //
-    //save a hit = hit1[][] = [
-    //
-//x = randomCoord[0],
-//y = randomCoord[1]];
-    //
-
     // Add adjacent candidate cells for the computer's targeting AI.
     public static void addCandidates(int x, int y) {
         if (x > 0 && !isAlreadyGuessed(playerGrid, x-1, y))
@@ -509,6 +490,18 @@ public class BattleShips {
             targetList.add(new int[]{x, y-1});
         if (y < numCols - 1 && !isAlreadyGuessed(playerGrid, x, y+1))
             targetList.add(new int[]{x, y+1});
+    }
+
+    // will return true if no cell on the board contains the ship marker.
+    public static boolean isShipSunk(String marker, String[][] board) {
+        for (int i = 0; i < numRows; i++){
+            for (int j = 0; j < numCols; j++){
+                if (board[i][j].equals(marker)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     // game over display.
